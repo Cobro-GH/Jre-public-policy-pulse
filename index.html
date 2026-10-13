@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>政策脈搏｜JRE 筆試懶人包 Demo</title>
+  <meta name="description" content="香港時事政策搜尋器升級 Demo：JRE 筆試懶人包、GSMEAC、答題骨架、搜尋比較與溫習輸出" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">脈</div>
+        <h1>政策脈搏</h1>
+        <p>JRE 筆試 · DEMO</p>
+      </div>
+      <button type="button" class="mobile-toggle" id="menu-toggle" style="margin:0 .75rem .75rem;width:calc(100% - 1.5rem);justify-content:center">選單</button>
+      <nav class="nav" id="nav" aria-label="主導覽"></nav>
+      <div class="sidebar-foot">
+        示範版 · 樣本政策資料<br />
+        無登入 · 無即時官方匯入<br />
+        GSMEAC：治理／持份者／執行／成效／問責／協同
+      </div>
+    </aside>
+    <main class="main" id="main"></main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="data/policies.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
