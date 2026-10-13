@@ -1,6 +1,7 @@
 /**
  * 政策脈搏｜JRE 筆試升級 Demo
  * 筆試導向：懶人包、GSMEAC、答題骨架（問題—取捨—方案—指標）
+ * CSRADAR 風格：本週焦點長文、決策者延伸題、本週必記一鍵匯出
  */
 (function () {
   "use strict";
@@ -55,7 +56,9 @@
     flashDeck: [],
     studyMode: "daily",
     briefingIds: [],
-    showMd: false
+    showMd: false,
+    focusId: null,
+    briefingMode: "pack" // pack | must
   };
 
   const $ = (sel, el = document) => el.querySelector(sel);
@@ -127,6 +130,91 @@
     return [...POLICY_DATA]
       .sort((a, b) => b.importanceScore - a.importanceScore || b.date.localeCompare(a.date))
       .slice(0, mode.packCount);
+  }
+
+  function weeklyBundle() {
+    return (typeof WEEKLY_BUNDLE !== "undefined" && WEEKLY_BUNDLE) ? WEEKLY_BUNDLE : null;
+  }
+
+  /** 本週焦點候選：策展包優先，否則用近兩週高重要性 */
+  function weeklyFocusCandidates() {
+    const wb = weeklyBundle();
+    if (wb && Array.isArray(wb.focusPolicyIds) && wb.focusPolicyIds.length) {
+      const list = wb.focusPolicyIds.map(byId).filter(Boolean);
+      if (list.length) return list;
+    }
+    const end = wb?.weekEnd || "2026-10-12";
+    const start = wb?.weekStart || "2026-09-28";
+    const inWindow = POLICY_DATA.filter((p) => p.date >= start && p.date <= end);
+    const pool = inWindow.length >= 2 ? inWindow : POLICY_DATA;
+    return [...pool]
+      .sort((a, b) => b.importanceScore - a.importanceScore || b.date.localeCompare(a.date))
+      .slice(0, 6);
+  }
+
+  /** 本週必記 5–8 則 */
+  function mustRememberPolicies() {
+    const wb = weeklyBundle();
+    if (wb && Array.isArray(wb.mustRememberIds) && wb.mustRememberIds.length) {
+      const list = wb.mustRememberIds.map(byId).filter(Boolean).slice(0, 8);
+      if (list.length >= 5) return list;
+    }
+    return [...POLICY_DATA]
+      .sort((a, b) => b.importanceScore - a.importanceScore || b.date.localeCompare(a.date))
+      .slice(0, 8);
+  }
+
+  /**
+   * 若你係決策者會點做 — 置於懶人包 GSMEAC／骨架之前
+   * 優先用 interviewQuestions 改寫成決策者語氣，否則由政策欄位推導。
+   */
+  function policymakerQuestions(policy) {
+    if (!policy) return [];
+    if (Array.isArray(policy.policymakerQuestions) && policy.policymakerQuestions.length) {
+      return policy.policymakerQuestions.slice(0, 3);
+    }
+    const qs = (policy.interviewQuestions || []).slice(0, 3);
+    if (qs.length >= 2) {
+      return qs.map((q) => {
+        const s = String(q).trim();
+        if (/^(若你係決策者|假如你是決策者|作為決策者)/.test(s)) return s;
+        return `若你係決策者會點做：${s}`;
+      });
+    }
+    const term = (policy.keyTerms && policy.keyTerms[0]) || policy.category;
+    const point = (policy.policyPoints && policy.policyPoints[0]) || "核心措施";
+    const mem = (policy.memoryPoints && policy.memoryPoints[0]) || "關鍵風險未緩解";
+    return [
+      `若你係決策者會點做：面對「${policy.category}」下「${term}」爭議，你會優先守護邊個持份者？點解？`,
+      `若你係決策者會點做：資源只夠推進其中一項時，你會唔會優先「${String(point).slice(0, 28)}」？用咩指標向公眾解釋？`,
+      `若你係決策者會點做：推行六個月後若「${String(mem).slice(0, 36)}」仍未改善，你會點調整、加碼定叫停？`
+    ].slice(0, 3);
+  }
+
+  /** 長文分析：策展優先，否則由政策欄位推導（背景→爭議→取捨→指標→練習題） */
+  function longFormFor(policy) {
+    const wb = weeklyBundle();
+    const curated = wb && wb.longForm && policy && wb.longForm[policy.id];
+    if (curated) return curated;
+    if (!policy) {
+      return { 背景: [], 爭議: [], 取捨: [], 指標: [], 練習題: [] };
+    }
+    const sk = sampleSkeleton(policy, (policy.interviewQuestions || [])[0] || policy.title, "G");
+    return {
+      背景: [
+        policy.summary,
+        `主導部門：${policy.department}；階段：${policy.policyStage}；來源：${policy.source}。`,
+        ...(policy.policyPoints || []).slice(0, 2)
+      ],
+      爭議: (policy.interviewQuestions || []).slice(0, 3).map((q) => q.replace(/？$/, "——這正是本週值得爭辯的焦點。")),
+      取捨: sk.取捨.concat([
+        `執行主體（${policy.department}）集中推進 vs 跨局協同與透明度`
+      ]),
+      指標: sk.指標.concat([
+        `公開檢討：建議就「${(policy.keyTerms || [])[0] || policy.category}」每季公布 1–2 個可驗證數字`
+      ]),
+      練習題: policymakerQuestions(policy)
+    };
   }
 
   function modeToggleHtml() {
@@ -250,15 +338,16 @@
 
   function renderNav() {
     const items = [
-      { id: "lazy", label: "懶人包", icon: "⚡", featured: true },
+      { id: "focus", label: "本週焦點", icon: "🎯", featured: true },
+      { id: "lazy", label: "懶人包", icon: "⚡" },
       { id: "home", label: "搜尋同脈絡", icon: "🔍" },
       { id: "practice", label: "JRE 練習模式", icon: "✍️" },
       { id: "compare", label: "政策比較", icon: "⚖️" },
       { id: "flash", label: "閃卡溫習", icon: "🃏" },
-      { id: "briefing", label: "一頁簡報", icon: "📄" }
+      { id: "briefing", label: "本週必記", icon: "📄" }
     ];
     return items.map((it) => `
-      <button type="button" class="nav-btn ${it.featured ? "featured" : ""} ${state.view === it.id || (it.id === "lazy" && state.view === "pack") ? "active" : ""}" data-nav="${it.id}">
+      <button type="button" class="nav-btn ${it.featured ? "featured" : ""} ${state.view === it.id || (it.id === "lazy" && state.view === "pack") || (it.id === "briefing" && state.briefingMode === "must" && state.view === "briefing") ? "active" : ""}" data-nav="${it.id}">
         <span class="icon">${it.icon}</span>${it.label}
       </button>
     `).join("");
@@ -353,6 +442,89 @@
       </div>`;
   }
 
+  function renderFocus() {
+    const wb = weeklyBundle();
+    const candidates = weeklyFocusCandidates();
+    if (!state.focusId || !byId(state.focusId)) {
+      state.focusId = candidates[0] ? candidates[0].id : (POLICY_DATA[0] && POLICY_DATA[0].id);
+    }
+    const policy = byId(state.focusId);
+    const lf = longFormFor(policy);
+    const weekLabel = wb ? wb.weekLabel : "本週";
+    const title = wb ? wb.title : "本週焦點長文分析";
+    const summary = wb ? wb.executiveSummary : "揀選高重要性政策，按背景→爭議→取捨→指標→練習題作長文掃描。";
+
+    const sections = [
+      { key: "背景", cls: "bg-background", tag: "1", title: "背景" },
+      { key: "爭議", cls: "bg-dispute", tag: "2", title: "爭議" },
+      { key: "取捨", cls: "bg-tradeoff", tag: "3", title: "取捨" },
+      { key: "指標", cls: "bg-metric", tag: "4", title: "指標" },
+      { key: "練習題", cls: "bg-practice", tag: "5", title: "練習題" }
+    ];
+
+    return `
+      <div class="topbar">
+        <div>
+          <h2 class="serif">本週焦點</h2>
+          <p class="sub">長文分析（背景→爭議→取捨→指標→練習題）· 彩色區塊閱讀 · ${esc(weekLabel)}</p>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary btn-sm" data-export-must>一鍵本週必記</button>
+          <button type="button" class="btn btn-outline btn-sm" data-open-pack="${policy ? policy.id : ""}">開懶人包</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">列印本頁</button>
+        </div>
+      </div>
+      <div class="focus-hero">
+        <p class="kicker">WEEKLY FOCUS · ${esc(weekLabel)}</p>
+        <h2>${esc(title)}</h2>
+        <p>${esc(summary)}</p>
+      </div>
+      <p style="font-size:.78rem;font-weight:700;color:#6b8b7d;letter-spacing:.08em;margin:0 0 .5rem">揀選本週焦點篇</p>
+      <div class="focus-pick" role="tablist" aria-label="本週焦點政策">
+        ${candidates.map((p) => `
+          <button type="button" class="${state.focusId === p.id ? "active" : ""}" data-focus-id="${p.id}">
+            <span class="t">${esc(p.title.length > 36 ? p.title.slice(0, 36) + "…" : p.title)}</span>
+            <span class="m">${esc(p.category)} · 重要性 ${p.importanceScore}</span>
+          </button>
+        `).join("")}
+      </div>
+      ${policy ? `
+        <article class="focus-longform sheet" style="padding:1.25rem">
+          <header class="sheet-header" style="margin-bottom:1rem">
+            <div class="policy-meta">
+              ${catBadge(policy.category)}
+              <span class="badge badge-soft">${esc(policy.department)}</span>
+              <span class="badge badge-soft">${esc(policy.policyStage)}</span>
+              <span class="date">${fmtDate(policy.date)}</span>
+            </div>
+            <h2 style="font-size:1.35rem">${esc(policy.title)}</h2>
+            <p style="margin:.5rem 0 0;font-size:.82rem">
+              重要性 <strong style="color:var(--green-deep)">${policy.importanceScore}</strong>
+              · <a href="${esc(policy.canonicalUrl)}" target="_blank" rel="noopener">官方原文</a>
+              · <button type="button" class="btn btn-amber btn-sm" data-start-practice="${policy.id}" style="margin-left:.25rem">筆試練習</button>
+            </p>
+          </header>
+          ${sections.map((sec) => {
+            const items = lf[sec.key] || [];
+            if (sec.key === "練習題") {
+              return `
+                <section class="focus-section ${sec.cls}">
+                  <h3><span class="step-tag">${sec.tag}</span>${sec.title}</h3>
+                  <ul style="list-style:none;padding:0;margin:0">
+                    ${items.map((q, i) => `<li class="q-item"><strong>${i + 1}.</strong> ${esc(q)}</li>`).join("")}
+                  </ul>
+                </section>`;
+            }
+            return `
+              <section class="focus-section ${sec.cls}">
+                <h3><span class="step-tag">${sec.tag}</span>${sec.title}</h3>
+                <ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+              </section>`;
+          }).join("")}
+        </article>
+      ` : `<div class="empty">未有本週焦點政策。</div>`}`;
+  }
+
   function renderLazyHub() {
     const mode = STUDY_MODES[state.studyMode];
     const list = topForMode();
@@ -373,8 +545,10 @@
           </div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-amber btn-sm" data-export-must>本週必記</button>
           <button type="button" class="btn btn-outline btn-sm" data-open-daily-pack>一頁簡報</button>
           <button type="button" class="btn btn-outline btn-sm" data-flash-from-mode>轉閃卡</button>
+          <button type="button" class="btn btn-outline btn-sm" data-nav="focus">本週焦點</button>
         </div>
       </div>
       <div class="card">
@@ -418,6 +592,7 @@
       ${modeToggleHtml()}
       <div class="pack-toolbar">
         <button type="button" class="btn btn-primary btn-sm" data-start-practice="${policy.id}">開始筆試練習</button>
+        <button type="button" class="btn btn-amber btn-sm" data-export-must>本週必記</button>
         <button type="button" class="btn btn-outline btn-sm" data-brief-one="${policy.id}">一頁簡報</button>
         <button type="button" class="btn btn-outline btn-sm" data-copy-pack-md="${policy.id}">複製 Markdown</button>
         <button type="button" class="btn btn-outline btn-sm" data-compare-add="${policy.id}">加入比較</button>
@@ -436,6 +611,19 @@
           <p style="margin:.5rem 0 0;font-size:.8rem">重要性 <strong style="color:var(--green-deep)">${policy.importanceScore}</strong>
             · <a href="${esc(policy.canonicalUrl)}" target="_blank" rel="noopener">官方原文（示範連結）</a></p>
         </header>
+
+        ${(() => {
+          const pmQs = policymakerQuestions(policy);
+          return `
+        <aside class="pm-box" aria-label="決策者延伸題">
+          <p class="pm-kicker">POLICYMAKER EXTENSION</p>
+          <h3>若你係決策者會點做</h3>
+          <p class="pm-hint">先用決策者視角想清楚優先次序，再進入下方 GSMEAC 與「問題—取捨—方案—指標」骨架。</p>
+          ${pmQs.map((q, i) => `
+            <div class="pm-q"><span class="n">${i + 1}</span><span>${esc(q)}</span></div>
+          `).join("")}
+        </aside>`;
+        })()}
 
         <div class="section-label">📌 政策重點</div>
         <ul class="mem-list">${(policy.policyPoints || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
@@ -771,11 +959,80 @@
     return md;
   }
 
+  /** 本週必記 Markdown（5–8 則 + 必記要點） */
+  function mustRememberMarkdown(policies) {
+    const wb = weeklyBundle();
+    const weekLabel = wb ? wb.weekLabel : new Date().toLocaleDateString("zh-HK");
+    let md = `# 本週必記｜政策脈搏\n\n`;
+    md += `> ${weekLabel} · ${policies.length} 則 · ${new Date().toLocaleDateString("zh-HK")} · 示範樣本\n\n`;
+    if (wb && wb.executiveSummary) {
+      md += `## 本週一句\n\n${wb.executiveSummary}\n\n`;
+    }
+    md += `## 必記清單\n\n`;
+    policies.forEach((p, idx) => {
+      const mems = (p.memoryPoints || []).slice(0, 3);
+      md += `### ${idx + 1}. ${p.title}\n\n`;
+      md += `- ${p.category}｜${p.department}｜重要性 ${p.importanceScore}｜${p.date}\n`;
+      md += `- 摘要：${p.summary}\n`;
+      md += `- **必記要點**：\n`;
+      mems.forEach((m) => { md += `  - ${m}\n`; });
+      if ((p.keyTerms || []).length) {
+        md += `- 關鍵詞：${(p.keyTerms || []).slice(0, 5).join("、")}\n`;
+      }
+      md += `\n`;
+    });
+    md += `---\n\n*由政策脈搏 Demo 一鍵匯出 · 非即時官方匯入*\n`;
+    return md;
+  }
+
   function renderBriefing() {
-    const ids = state.briefingIds.length ? state.briefingIds : topForMode().map((p) => p.id);
-    const policies = ids.map(byId).filter(Boolean);
+    const isMust = state.briefingMode === "must";
+    const policies = isMust
+      ? mustRememberPolicies()
+      : (state.briefingIds.length ? state.briefingIds : topForMode().map((p) => p.id)).map(byId).filter(Boolean);
     const mode = STUDY_MODES[state.studyMode];
-    const md = briefingMarkdown(policies);
+    const wb = weeklyBundle();
+    const md = isMust ? mustRememberMarkdown(policies) : briefingMarkdown(policies);
+
+    if (isMust) {
+      return `
+      <div class="topbar">
+        <div>
+          <h2 class="serif">本週必記</h2>
+          <p class="sub">一鍵週報 · 5–8 則精選 + 必記要點 · 可列印／複製 Markdown</p>
+        </div>
+      </div>
+      <div class="must-banner">
+        <h3>📋 ${esc(wb ? wb.weekLabel : "本週")} · 必記 ${policies.length} 則</h3>
+        <p>${esc(wb ? wb.executiveSummary : "按重要性精選本週必記政策，方便考前快速默寫。")}</p>
+      </div>
+      <div class="briefing-actions">
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">列印／匯出 PDF</button>
+        <button type="button" class="btn btn-outline btn-sm" id="copy-md">複製 Markdown</button>
+        <button type="button" class="btn btn-outline btn-sm" id="toggle-md">${state.showMd ? "隱藏" : "預覽"} Markdown</button>
+        <button type="button" class="btn btn-outline btn-sm" data-briefing-mode="pack">切換完整懶人包簡報</button>
+        <button type="button" class="btn btn-amber btn-sm" data-nav="focus">返回本週焦點</button>
+      </div>
+      <pre class="md-preview ${state.showMd ? "show" : ""}" id="md-block">${esc(md)}</pre>
+      <div class="briefing-doc" id="briefing-doc">
+        <h1>本週必記｜政策脈搏</h1>
+        <div class="meta">${esc(wb ? wb.weekLabel : "")} · ${policies.length} 則 · ${new Date().toLocaleDateString("zh-HK")} · 示範樣本（非即時官方匯入）</div>
+        ${wb && wb.executiveSummary ? `<p style="font-size:.9rem;line-height:1.65">${esc(wb.executiveSummary)}</p>` : ""}
+        ${policies.map((p, idx) => {
+          const mems = (p.memoryPoints || []).slice(0, 3);
+          return `
+            <div class="must-item">
+              <h4>${idx + 1}. ${esc(p.title)}</h4>
+              <div class="meta">${esc(p.category)} · ${esc(p.department)} · ${fmtDate(p.date)} · 重要性 ${p.importanceScore}</div>
+              <p style="font-size:.88rem;margin:.35rem 0;color:#3d574b">${esc(p.summary)}</p>
+              <p style="font-size:.78rem;font-weight:700;color:var(--green-mid);margin:.5rem 0 .2rem">必記要點</p>
+              <ul class="must-points">${mems.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+              <p style="font-size:.78rem;color:var(--text-faint);margin:.45rem 0 0">${(p.keyTerms || []).slice(0, 5).map(esc).join(" · ")}</p>
+            </div>`;
+        }).join("")}
+      </div>`;
+    }
+
     return `
       <div class="topbar">
         <div>
@@ -785,6 +1042,7 @@
       </div>
       ${modeToggleHtml()}
       <div class="briefing-actions">
+        <button type="button" class="btn btn-amber btn-sm" data-export-must>一鍵本週必記</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">列印／匯出 PDF</button>
         <button type="button" class="btn btn-outline btn-sm" id="copy-md">複製 Markdown</button>
         <button type="button" class="btn btn-outline btn-sm" id="toggle-md">${state.showMd ? "隱藏" : "預覽"} Markdown</button>
@@ -819,21 +1077,23 @@
   }
 
   function renderHomeLandingStats() {
+    const wb = weeklyBundle();
     return `
       <div class="hero">
         <p class="hero-kicker">JRE 筆試 · 政策脈搏升級 DEMO</p>
         <h2>把官方政策，變成可默寫的答題結構。</h2>
-        <p>專為公務員考試 JRE 筆試而設：懶人包掃描、GSMEAC 書面角度、問題—取捨—方案—指標骨架。本頁為本地示範，不含即時政府資料匯入。</p>
+        <p>專為公務員考試 JRE 筆試而設：本週焦點長文、懶人包（決策者延伸題＋GSMEAC）、問題—取捨—方案—指標骨架、本週必記一鍵匯出。本頁為本地示範，不含即時政府資料匯入。</p>
         <div class="hero-actions">
-          <button type="button" class="btn btn-white" data-nav="lazy">打開懶人包</button>
-          <button type="button" class="btn btn-ghost" data-nav="practice">進入筆試練習</button>
-          <button type="button" class="btn btn-ghost" data-nav="home">搜尋政策</button>
+          <button type="button" class="btn btn-white" data-nav="focus">打開本週焦點</button>
+          <button type="button" class="btn btn-ghost" data-nav="lazy">懶人包</button>
+          <button type="button" class="btn btn-ghost" data-export-must>本週必記</button>
+          <button type="button" class="btn btn-ghost" data-nav="practice">筆試練習</button>
         </div>
       </div>
       <div class="grid-stats">
-        <div class="stat-card"><p class="label">樣本政策</p><p class="value">${POLICY_DATA.length}</p><p class="cap">跨${CATEGORIES.filter((c) => c !== "全部").length}類議題</p></div>
-        <div class="stat-card"><p class="label">懶人包模式</p><p class="value">2</p><p class="cap">每日少量／考前密集</p></div>
-        <div class="stat-card"><p class="label">GSMEAC</p><p class="value">6</p><p class="cap">書面維度引導</p></div>
+        <div class="stat-card"><p class="label">樣本政策</p><p class="value">${POLICY_DATA.length}</p><p class="cap">近一年撮要</p></div>
+        <div class="stat-card"><p class="label">本週焦點</p><p class="value">${weeklyFocusCandidates().length}</p><p class="cap">${esc(wb ? wb.weekLabel : "長文分析")}</p></div>
+        <div class="stat-card"><p class="label">本週必記</p><p class="value">${mustRememberPolicies().length}</p><p class="cap">一鍵匯出</p></div>
         <div class="stat-card"><p class="label">答題骨架</p><p class="value">4</p><p class="cap">問題·取捨·方案·指標</p></div>
       </div>`;
   }
@@ -843,6 +1103,9 @@
     const main = $("#main");
     let body = "";
     switch (state.view) {
+      case "focus":
+        body = renderFocus();
+        break;
       case "lazy":
         body = renderLazyHub();
         break;
@@ -883,8 +1146,13 @@
           state.flashIndex = 0;
           state.flashFlipped = false;
         }
-        if (v === "briefing" && !state.briefingIds.length) {
-          state.briefingIds = topForMode().map((p) => p.id);
+        if (v === "briefing") {
+          state.briefingMode = "must";
+          state.briefingIds = mustRememberPolicies().map((p) => p.id);
+        }
+        if (v === "focus" && !state.focusId) {
+          const c = weeklyFocusCandidates();
+          state.focusId = c[0] ? c[0].id : null;
         }
         setView(v);
       });
@@ -930,6 +1198,7 @@
 
     $$("[data-brief-one]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        state.briefingMode = "pack";
         state.briefingIds = [btn.getAttribute("data-brief-one")];
         setView("briefing");
       });
@@ -945,6 +1214,7 @@
     const daily = $("[data-open-daily-pack]");
     if (daily) {
       daily.addEventListener("click", () => {
+        state.briefingMode = "pack";
         state.briefingIds = topForMode().map((p) => p.id);
         setView("briefing");
       });
@@ -1093,8 +1363,10 @@
     });
 
     $("#copy-md")?.addEventListener("click", async () => {
-      const ids = state.briefingIds.length ? state.briefingIds : topForMode().map((p) => p.id);
-      const md = briefingMarkdown(ids.map(byId).filter(Boolean));
+      const policies = state.briefingMode === "must"
+        ? mustRememberPolicies()
+        : (state.briefingIds.length ? state.briefingIds : topForMode().map((p) => p.id)).map(byId).filter(Boolean);
+      const md = state.briefingMode === "must" ? mustRememberMarkdown(policies) : briefingMarkdown(policies);
       try {
         await navigator.clipboard.writeText(md);
         toast("已複製 Markdown");
@@ -1107,6 +1379,35 @@
     $("#toggle-md")?.addEventListener("click", () => {
       state.showMd = !state.showMd;
       render();
+    });
+
+    $$("[data-focus-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.focusId = btn.getAttribute("data-focus-id");
+        setView("focus");
+      });
+    });
+
+    $$("[data-export-must]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.briefingMode = "must";
+        state.briefingIds = mustRememberPolicies().map((p) => p.id);
+        state.showMd = false;
+        setView("briefing");
+        toast("已生成本週必記");
+      });
+    });
+
+    $$("[data-briefing-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.briefingMode = btn.getAttribute("data-briefing-mode") || "pack";
+        if (state.briefingMode === "pack") {
+          state.briefingIds = topForMode().map((p) => p.id);
+        } else {
+          state.briefingIds = mustRememberPolicies().map((p) => p.id);
+        }
+        render();
+      });
     });
 
     $("#menu-toggle")?.addEventListener("click", () => {
