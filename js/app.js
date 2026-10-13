@@ -831,7 +831,7 @@
         </div>
       </div>
       <div class="grid-stats">
-        <div class="stat-card"><p class="label">樣本政策</p><p class="value">${POLICY_DATA.length}</p><p class="cap">跨五類議題</p></div>
+        <div class="stat-card"><p class="label">樣本政策</p><p class="value">${POLICY_DATA.length}</p><p class="cap">跨${CATEGORIES.filter((c) => c !== "全部").length}類議題</p></div>
         <div class="stat-card"><p class="label">懶人包模式</p><p class="value">2</p><p class="cap">每日少量／考前密集</p></div>
         <div class="stat-card"><p class="label">GSMEAC</p><p class="value">6</p><p class="cap">書面維度引導</p></div>
         <div class="stat-card"><p class="label">答題骨架</p><p class="value">4</p><p class="cap">問題·取捨·方案·指標</p></div>
