@@ -2,16 +2,23 @@
  * 政策脈搏｜JRE 筆試升級 Demo
  * 筆試導向：懶人包、GSMEAC、答題骨架（問題—取捨—方案—指標）
  * CSRADAR 風格：本週焦點長文、決策者延伸題、本週必記一鍵匯出
+ * JREHK 風格：先落判斷、正反論點、可行建議閘門、11 大議題、換題測試
  */
 (function () {
   "use strict";
 
   const CAT_CLASS = {
-    "房屋與土地": "badge-housing",
-    "醫療與衞生": "badge-health",
-    "教育與青年": "badge-edu",
-    "經濟與財政": "badge-econ",
-    "立法與憲制": "badge-legal"
+    "房屋土地": "badge-housing",
+    "環境生態": "badge-env",
+    "醫療衞生": "badge-health",
+    "社會福利": "badge-welfare",
+    "勞工就業": "badge-labour",
+    "經濟財政": "badge-econ",
+    "創新科技": "badge-inno",
+    "交通運輸": "badge-transport",
+    "教育": "badge-edu",
+    "治安保安": "badge-security",
+    "公共管治": "badge-gov"
   };
 
   /** 溫習量模式：每日少量 vs 考前密集 */
@@ -73,6 +80,31 @@
 
   function catBadge(cat) {
     return `<span class="badge ${CAT_CLASS[cat] || "badge-soft"}">${esc(cat)}</span>`;
+  }
+
+  /** 先落判斷 + 01 支持／02 風險／03 建議（含閘門） */
+  function debateBlock(policy) {
+    if (!policy || !policy.judgment) return "";
+    const cols = [
+      { n: "01", title: "支持理據", items: policy.pros || [], cls: "debate-pro" },
+      { n: "02", title: "風險反駁", items: policy.cons || [], cls: "debate-con" },
+      { n: "03", title: "可行建議", items: policy.suggestions || [], cls: "debate-sug" }
+    ];
+    return `
+      <section class="debate-block" aria-label="正反論點">
+        <div class="judgment-banner">
+          <p class="judgment-kicker">先落判斷</p>
+          <p class="judgment-text">${esc(policy.judgment)}</p>
+        </div>
+        <div class="debate-grid">
+          ${cols.map((col) => `
+            <article class="debate-col ${col.cls}">
+              <h3><span class="debate-num">${col.n}</span> · ${col.title}</h3>
+              <ol>${col.items.map((item) => `<li>${esc(item)}</li>`).join("")}</ol>
+            </article>
+          `).join("")}
+        </div>
+      </section>`;
   }
 
   function esc(s) {
@@ -498,6 +530,7 @@
               <span class="date">${fmtDate(policy.date)}</span>
             </div>
             <h2 style="font-size:1.35rem">${esc(policy.title)}</h2>
+            ${debateBlock(policy)}
             <p style="margin:.5rem 0 0;font-size:.82rem">
               重要性 <strong style="color:var(--green-deep)">${policy.importanceScore}</strong>
               · <a href="${esc(policy.canonicalUrl)}" target="_blank" rel="noopener">官方原文</a>
@@ -612,6 +645,8 @@
             · <a href="${esc(policy.canonicalUrl)}" target="_blank" rel="noopener">官方原文（示範連結）</a></p>
         </header>
 
+        ${debateBlock(policy)}
+
         ${(() => {
           const pmQs = policymakerQuestions(policy);
           return `
@@ -694,6 +729,7 @@
         <div class="policy-meta">${catBadge(policy.category)}<span class="date">${fmtDate(policy.date)} · ${esc(policy.department)}</span></div>
         <h2 class="serif" style="margin:.5rem 0;font-size:1.4rem">${esc(policy.title)}</h2>
         <p style="color:var(--text-muted)">${esc(policy.summary)}</p>
+        ${debateBlock(policy)}
         <div class="section-label">政策重點</div>
         <ul class="mem-list">${policy.policyPoints.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
         <div class="section-label">關鍵詞</div>
@@ -723,7 +759,14 @@
       { id: "c4", label: "指標可驗證，並有檢討時點" },
       { id: "c5", label: "段落呼應本步 GSMEAC 維度" }
     ];
-    const checked = checks.filter((c) => state.practiceChecks[c.id]).length;
+    const swapChecks = [
+      { id: "swap-data", label: "已寫入本題專屬數據或政策工具，不能原句搬去另一題" },
+      { id: "swap-stake", label: "已點名本題持份者，以及他們之間的利益張力" },
+      { id: "swap-inst", label: "已寫明制度限制：法例、部門權責、資源或時間閘門" }
+    ];
+    const allChecks = checks.concat(swapChecks);
+    const checked = allChecks.filter((c) => state.practiceChecks[c.id]).length;
+    const anchors = (policy.keyTerms || []).slice(0, 3).join("、");
 
     return `
       <div class="topbar">
@@ -806,7 +849,20 @@
                 </label>
               `).join("")}
             </div>
-            <div class="score-out">自評完成度：${checked} / ${checks.length}${checked === checks.length ? " · 可進入下一維度或另一則懶人包" : ""}</div>
+            <section class="swap-test" aria-label="換題測試">
+              <p class="swap-kicker">換題測試</p>
+              <p class="swap-quote">若成段換去另一題仍完全成立，就代表內容太通用。</p>
+              <p class="swap-hint">請核對答案是否寫入本題的數據、持份者及制度限制。${anchors ? `本題錨點：${esc(anchors)}。` : ""}</p>
+              <div class="checklist">
+                ${swapChecks.map((c) => `
+                  <label class="check-item">
+                    <input type="checkbox" data-check="${c.id}" ${state.practiceChecks[c.id] ? "checked" : ""} />
+                    <span>${esc(c.label)}</span>
+                  </label>
+                `).join("")}
+              </div>
+            </section>
+            <div class="score-out">自評完成度：${checked} / ${allChecks.length}${checked === allChecks.length ? " · 可進入下一維度或另一則懶人包" : ""}</div>
           </div>
         </div>
       </div>`;
@@ -824,6 +880,7 @@
       ["日期", fmtDate(a.date), fmtDate(b.date)],
       ["重要性", String(a.importanceScore), String(b.importanceScore)],
       ["摘要", a.summary, b.summary],
+      ["先落判斷", a.judgment || "—", b.judgment || "—"],
       ["政策重點", (a.policyPoints || []).map((x) => "• " + x).join("\n"), (b.policyPoints || []).map((x) => "• " + x).join("\n")],
       ["關鍵詞", (a.keyTerms || []).join("、"), (b.keyTerms || []).join("、")],
       ["標籤重疊", overlapTags(a, b), overlapTags(a, b)]
@@ -848,8 +905,8 @@
             ${rows.map((r, idx) => `
               <tr>
                 <th>${esc(r[0])}</th>
-                <td style="white-space:pre-wrap">${esc(idx === 8 ? overlapTags(a, b) : r[1])}</td>
-                <td style="white-space:pre-wrap">${esc(idx === 8 ? "← 相同" : r[2])}</td>
+                <td style="white-space:pre-wrap">${esc(r[0] === "標籤重疊" ? overlapTags(a, b) : r[1])}</td>
+                <td style="white-space:pre-wrap">${esc(r[0] === "標籤重疊" ? "← 相同" : r[2])}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -875,6 +932,13 @@
     const policies = topForMode();
     const deck = [];
     policies.forEach((p) => {
+      if (p.judgment) {
+        deck.push({
+          front: `【先落判斷】${p.category} · ${(p.title || "").slice(0, 22)}`,
+          back: p.judgment,
+          source: p.title
+        });
+      }
       (p.memoryPoints || []).forEach((m, i) => {
         deck.push({
           front: `【記憶點】${p.category} · ${p.keyTerms[0] || p.department}`,
@@ -940,7 +1004,14 @@
       const angles = gsmeacAngles(p, mode.showFullGsmeac);
       md += `## ${idx + 1}. ${p.title}\n\n`;
       md += `- 分類：${p.category}｜部門：${p.department}｜${p.date}｜重要性 ${p.importanceScore}\n`;
-      md += `- 摘要：${p.summary}\n\n`;
+      md += `- 摘要：${p.summary}\n`;
+      if (p.judgment) md += `- 先落判斷：${p.judgment}\n`;
+      md += `\n`;
+      if ((p.pros || []).length) {
+        md += `### 01 · 支持理據\n${p.pros.map((x) => `- ${x}`).join("\n")}\n\n`;
+        md += `### 02 · 風險反駁\n${(p.cons || []).map((x) => `- ${x}`).join("\n")}\n\n`;
+        md += `### 03 · 可行建議\n${(p.suggestions || []).map((x) => `- ${x}`).join("\n")}\n\n`;
+      }
       md += `### 政策重點\n${(p.policyPoints || []).map((x) => `- ${x}`).join("\n")}\n\n`;
       md += `### 記憶點\n${mems.map((x) => `- ${x}`).join("\n")}\n\n`;
       md += `### 關鍵詞\n${(p.keyTerms || []).map((t) => `\`${t}\``).join(" ")}\n\n`;
@@ -973,6 +1044,7 @@
       const mems = (p.memoryPoints || []).slice(0, 3);
       md += `### ${idx + 1}. ${p.title}\n\n`;
       md += `- ${p.category}｜${p.department}｜重要性 ${p.importanceScore}｜${p.date}\n`;
+      if (p.judgment) md += `- 先落判斷：${p.judgment}\n`;
       md += `- 摘要：${p.summary}\n`;
       md += `- **必記要點**：\n`;
       mems.forEach((m) => { md += `  - ${m}\n`; });
@@ -1082,7 +1154,7 @@
       <div class="hero">
         <p class="hero-kicker">JRE 筆試 · 政策脈搏升級 DEMO</p>
         <h2>把官方政策，變成可默寫的答題結構。</h2>
-        <p>專為公務員考試 JRE 筆試而設：本週焦點長文、懶人包（決策者延伸題＋GSMEAC）、問題—取捨—方案—指標骨架、本週必記一鍵匯出。本頁為本地示範，不含即時政府資料匯入。</p>
+        <p>專為公務員考試 JRE 筆試而設：先落判斷、正反論點與建議閘門，加上本週焦點、決策者延伸題、GSMEAC 與本週必記。分類對齊 11 大議題。本頁為本地示範，不含即時政府資料匯入。</p>
         <div class="hero-actions">
           <button type="button" class="btn btn-white" data-nav="focus">打開本週焦點</button>
           <button type="button" class="btn btn-ghost" data-nav="lazy">懶人包</button>

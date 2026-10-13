@@ -25,6 +25,13 @@
   --cat-edu: #e8e6f5; --cat-edu-t: #554989;
   --cat-econ: #f1ecd6; --cat-econ-t: #7d6412;
   --cat-legal: #dce9f4; --cat-legal-t: #285d85;
+  --cat-env: #d9efe4; --cat-env-t: #1d6b45;
+  --cat-welfare: #f8e3ea; --cat-welfare-t: #8a3d58;
+  --cat-labour: #fde8d4; --cat-labour-t: #8a4b12;
+  --cat-inno: #e4e9fb; --cat-inno-t: #3a4a8a;
+  --cat-transport: #d9eef5; --cat-transport-t: #1d5f78;
+  --cat-security: #f8e4e4; --cat-security-t: #8a3030;
+  --cat-gov: #e7e4f4; --cat-gov-t: #4a3d78;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -166,6 +173,13 @@ button { cursor: pointer; }
 .badge-edu { background: var(--cat-edu); color: var(--cat-edu-t); }
 .badge-econ { background: var(--cat-econ); color: var(--cat-econ-t); }
 .badge-legal { background: var(--cat-legal); color: var(--cat-legal-t); }
+.badge-env { background: var(--cat-env); color: var(--cat-env-t); }
+.badge-welfare { background: var(--cat-welfare); color: var(--cat-welfare-t); }
+.badge-labour { background: var(--cat-labour); color: var(--cat-labour-t); }
+.badge-inno { background: var(--cat-inno); color: var(--cat-inno-t); }
+.badge-transport { background: var(--cat-transport); color: var(--cat-transport-t); }
+.badge-security { background: var(--cat-security); color: var(--cat-security-t); }
+.badge-gov { background: var(--cat-gov); color: var(--cat-gov-t); }
 .badge-soft { background: #edf3ee; color: #3a6553; }
 .badge-score {
   font-family: var(--serif); font-size: 1.15rem; font-weight: 700;
@@ -507,6 +521,56 @@ button { cursor: pointer; }
 }
 .focus-longform { max-width: 820px; }
 
+/* ---------- 先落判斷／正反論點 ---------- */
+.debate-block { margin: 1rem 0 1.25rem; }
+.judgment-banner {
+  background: linear-gradient(135deg, #103e34 0%, #0d5b4c 70%);
+  color: #fff; border-radius: 16px; padding: 1rem 1.15rem 1.05rem;
+  margin-bottom: 0.75rem;
+}
+.judgment-kicker {
+  margin: 0 0 0.35rem; font-size: 0.72rem; letter-spacing: 0.14em;
+  font-weight: 700; color: #9ed4be;
+}
+.judgment-text {
+  margin: 0; font-family: var(--serif); font-size: 1.12rem; line-height: 1.65;
+  font-weight: 600;
+}
+.debate-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem;
+}
+.debate-col {
+  border-radius: 16px; padding: 0.9rem 0.95rem 0.7rem; border: 1px solid transparent;
+}
+.debate-col h3 {
+  margin: 0 0 0.55rem; font-size: 0.92rem; display: flex; align-items: center; gap: 0.35rem;
+}
+.debate-num {
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em; font-weight: 700;
+}
+.debate-col ol { margin: 0; padding-left: 1.15rem; }
+.debate-col li { margin: 0 0 0.45rem; font-size: 0.84rem; line-height: 1.6; }
+.debate-pro { background: #e8f3f0; border-color: #c5ddd5; }
+.debate-pro h3 { color: #145c48; }
+.debate-con { background: #faf0e4; border-color: #ead2b0; }
+.debate-con h3 { color: #99541f; }
+.debate-sug { background: #e7f0fa; border-color: #c5d8ea; }
+.debate-sug h3 { color: #285d85; }
+.swap-test {
+  margin-top: 1rem; background: #f7f4e8; border: 1px solid #e4dcb8;
+  border-radius: 14px; padding: 0.9rem 1rem 1rem;
+}
+.swap-kicker {
+  margin: 0; font-size: 0.72rem; letter-spacing: 0.12em; font-weight: 700; color: #7d6412;
+}
+.swap-quote {
+  margin: 0.35rem 0 0.25rem; font-family: var(--serif); font-size: 1.02rem; color: #3d3420; line-height: 1.55;
+}
+.swap-hint { margin: 0 0 0.15rem; font-size: 0.8rem; color: #6d6248; line-height: 1.55; }
+@media (max-width: 900px) {
+  .debate-grid { grid-template-columns: 1fr; }
+}
+
 /* ---------- 決策者延伸題（懶人包頂部） ---------- */
 .pm-box {
   background: linear-gradient(135deg, #fff9f0 0%, #f7efe3 100%);
@@ -563,5 +627,9 @@ button { cursor: pointer; }
   .focus-section.bg-dispute,
   .focus-section.bg-tradeoff,
   .focus-section.bg-metric,
-  .focus-section.bg-practice { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .focus-section.bg-practice,
+  .judgment-banner,
+  .debate-pro,
+  .debate-con,
+  .debate-sug { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
